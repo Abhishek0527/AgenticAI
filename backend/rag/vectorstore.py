@@ -2,7 +2,7 @@ import chromadb
 
 
 def store_embeddings(chunks:list[str],embeddings:list[list[float]]):
-    client = chromadb.Client()
+    client = chromadb.PersistentClient(path="./chroma_db")
     collection = client.get_or_create_collection(name="pdf_collection")
 
     ids = []

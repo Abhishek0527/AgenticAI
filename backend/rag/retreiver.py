@@ -2,7 +2,7 @@ from rag.embedding import embed_query
 import chromadb
 
 def  retrieve_document(query:str):
-    client = chromadb.Client()
+    client = chromadb.PersistentClient(path="./chroma_db")
 
     collection = client.get_or_create_collection(name="pdf_collection")
 
@@ -12,10 +12,12 @@ def  retrieve_document(query:str):
         query_embeddings=[query_embedding],
         n_results=3
     )
+    print("Query:", query)
+    print("Distance:", retrieved["distances"][0][0])
 
     best_decison = retrieved["distances"][0][0]
 
-    Threeshold = 1.2
+    Threeshold = 1.5
 
     if best_decison > Threeshold:
         return None

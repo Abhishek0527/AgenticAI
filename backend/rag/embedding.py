@@ -1,16 +1,16 @@
 from sentence_transformers import SentenceTransformer
 
+model_name = "all-MiniLM-L6-v2"
+model = SentenceTransformer(model_name)
+
 def embed_chunks(chunks:list[str]) -> list[list[float]]:
-    model_name="all-MiniLM-L6-v2"
-    model = SentenceTransformer(model_name)
 
     embeddings = model.encode(chunks)
 
     return embeddings
 
 def embed_query(query:str):
-    model_name = "all-MiniLM-L6-v2"
-    model = SentenceTransformer(model_name)
+
     embed_query = model.encode(query)
     return embed_query
 

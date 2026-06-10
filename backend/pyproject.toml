@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "anthropic>=0.105.2",
+    "atlassian-python-api>=4.0.7",
     "chromadb>=1.5.9",
     "fastapi>=0.136.3",
     "langchain-text-splitters>=1.1.2",

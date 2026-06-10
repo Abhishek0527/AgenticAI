@@ -1,52 +1,64 @@
-from rag.vectorstore import store_embeddings
-from rag.embedding import embed_chunks
-from rag.chunker import chunk_text
-from rag.document_loader import load_pdf
 import os
 
+from rag.chunker import chunk_text
+from rag.document_loader import load_confluence_pages, load_pdf
+from rag.embedding import embed_chunks
+from rag.vectorstore import store_embeddings
+
+from dotenv import load_dotenv
+load_dotenv()
+
+PDF_FOLDER = "./pdf_documents"
+USE_CONFLUENCE = os.getenv("ENABLE_CONFLUENCE_INGEST", "true").lower() in {"1", "true", "yes"}
+
+
+def _store_text(source_name, text):
+    chunks = chunk_text(text)
+
+    if not chunks:
+        print(f"Skipped: {source_name} (no text extracted)")
+        return
+
+    metadatas = [
+        {
+            "source": source_name,
+            "chunk_index": index,
+        }
+        for index, _ in enumerate(chunks)
+    ]
+
+    embeddings = embed_chunks(chunks)
+    store_embeddings(chunks, embeddings, metadatas)
+
+    print(f"Finished: {source_name}")
+    print(f"Chunks Stored: {len(chunks)}")
+
+
 def ingest():
-
-    pdf_folder = "./pdf_documents"
-
     pdf_files = [
         file
-        for file in os.listdir(pdf_folder)
+        for file in os.listdir(PDF_FOLDER)
         if file.endswith(".pdf")
     ]
 
     for pdf_file in pdf_files:
-
-        pdf_path = os.path.join(
-            pdf_folder,
-            pdf_file
-        )
-
-        print(f"\nProcessing: {pdf_file}")
-
+        pdf_path = os.path.join(PDF_FOLDER, pdf_file)
+        print(f"\nProcessing PDF: {pdf_file}")
         text = load_pdf(pdf_path)
+        _store_text(pdf_file, text)
 
-        chunks = chunk_text(text)
+    if USE_CONFLUENCE:
+        print("\nChecking Confluence pages...")
 
-        metadatas = []
+        try:
+            confluence_pages = load_confluence_pages()
+        except Exception as exc:
+            print(f"Confluence ingestion skipped: {exc}")
+            return
 
-        for index, _ in enumerate(chunks):
-            metadatas.append(
-                {
-                    "source": pdf_file,
-                    "chunk_index": index
-                }
-            )
-
-        embeddings = embed_chunks(chunks)
-
-        store_embeddings(
-            chunks,
-            embeddings,
-            metadatas
-        )
-
-        print(f"Finished: {pdf_file}")
-        print(f"Chunks Stored: {len(chunks)}")
+        for source_name, text in confluence_pages:
+            print(f"\nProcessing Confluence page: {source_name}")
+            _store_text(source_name, text)
 
 
 if __name__ == "__main__":

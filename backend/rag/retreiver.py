@@ -8,13 +8,24 @@ def  retrieve_document(query:str, source:str):
 
     query_embedding = embed_query(query)
 
-    retrieved = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=10,
-        where={
-            "source": source
-        }
-    )
+
+    if not source.lower().endswith(".pdf"):
+        print("Testing source :", source)
+        retrieved = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=10,
+            where={
+                "source_type": source
+            }
+        )
+    else:
+        retrieved = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=10,
+            where={
+                "source": source
+            }
+        )
 
     print("Vector Source:", source)
     print("Retrieved Chunks:", len(retrieved["documents"][0]))

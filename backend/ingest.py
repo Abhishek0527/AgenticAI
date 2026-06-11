@@ -12,7 +12,7 @@ PDF_FOLDER = "./pdf_documents"
 USE_CONFLUENCE = os.getenv("ENABLE_CONFLUENCE_INGEST", "true").lower() in {"1", "true", "yes"}
 
 
-def _store_text(source_name, text):
+def _store_text(source_name, text ,source_type="pdf"):
     chunks = chunk_text(text)
 
     if not chunks:
@@ -22,6 +22,7 @@ def _store_text(source_name, text):
     metadatas = [
         {
             "source": source_name,
+            "source_type": source_type,
             "chunk_index": index,
         }
         for index, _ in enumerate(chunks)
@@ -45,7 +46,7 @@ def ingest():
         pdf_path = os.path.join(PDF_FOLDER, pdf_file)
         print(f"\nProcessing PDF: {pdf_file}")
         text = load_pdf(pdf_path)
-        _store_text(pdf_file, text)
+        _store_text(pdf_file, text, source_type="pdf")
 
     if USE_CONFLUENCE:
         print("\nChecking Confluence pages...")
@@ -58,7 +59,7 @@ def ingest():
 
         for source_name, text in confluence_pages:
             print(f"\nProcessing Confluence page: {source_name}")
-            _store_text(source_name, text)
+            _store_text(source_name, text, source_type="confluence")
 
 
 if __name__ == "__main__":

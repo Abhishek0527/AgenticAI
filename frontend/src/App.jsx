@@ -51,6 +51,9 @@ function App() {
         <option value="langgraph.pdf">
           LangGraph
         </option>
+        <option value="confluence">
+          Confluence
+        </option>
       </select>
 
       <button onClick={askQuestion}>

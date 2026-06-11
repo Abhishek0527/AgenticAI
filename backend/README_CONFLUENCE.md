@@ -37,3 +37,12 @@ The ingestion flow will:
 
 - If Confluence pages are not being ingested, check that your API token has access to the target space.
 - If you want to ingest only specific pages, set `CONFLUENCE_PAGE_IDS`.
+
+
+uv sync
+uv run python ingest.py
+uv run uvicorn api.app:app --reload
+
+cd .\frontend\
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173

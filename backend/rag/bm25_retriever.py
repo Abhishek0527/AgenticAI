@@ -16,12 +16,20 @@ def bm25_retrieve(
     source: str,
     top_k: int = 10
 ):
+   
+    if not source.lower().endswith(".pdf"):
+        filtered_docs = collection.get(
+            where={
+                "source_type": source
+            }
+        )["documents"]
+    else:
+        filtered_docs = collection.get(
+            where={
+                "source": source            }
+        )["documents"]
 
-    filtered_docs = collection.get(
-        where={
-            "source": source
-        }
-    )["documents"]
+    
 
     tokenized_docs = [
         doc.lower().split()

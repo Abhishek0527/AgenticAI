@@ -44,13 +44,20 @@ function App() {
           React
         </option>
 
-        {/* <option value="python.pdf">
-          Python
-        </option> */}
-
         <option value="langgraph.pdf">
           LangGraph
         </option>
+
+
+        <option value="jira">
+          Jira
+        </option>
+
+        <option value="confluence">
+          Confluence
+        </option>
+
+
       </select>
 
       <button onClick={askQuestion}>

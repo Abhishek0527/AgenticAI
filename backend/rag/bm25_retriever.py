@@ -7,7 +7,7 @@ client = chromadb.PersistentClient(
 )
 
 collection = client.get_or_create_collection(
-    name="pdf_collection"
+    name="knowledge_fabric"
 )
 
 
@@ -17,11 +17,33 @@ def bm25_retrieve(
     top_k: int = 10
 ):
 
-    filtered_docs = collection.get(
-        where={
+    if source == "jira":
+
+        where = {
+        "source_type": "jira"
+    }
+
+    elif source == "confluence":
+
+        where = {
+            "source_type": "confluence"
+        }
+
+    else:
+
+        where = {
             "source": source
         }
+
+    filtered_docs = collection.get(
+        where=where
     )["documents"]
+
+    if not filtered_docs:
+
+        print("No BM25 docs found")
+
+        return []
 
     tokenized_docs = [
         doc.lower().split()

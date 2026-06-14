@@ -4,16 +4,33 @@ import chromadb
 def  retrieve_document(query:str, source:str):
     client = chromadb.PersistentClient(path="./chroma_db")
 
-    collection = client.get_or_create_collection(name="pdf_collection")
+    collection = client.get_or_create_collection(name="knowledge_fabric")
 
     query_embedding = embed_query(query)
+
+
+    if source == "jira":
+
+        where = {
+        "source_type": "jira"
+        }
+
+    elif source == "confluence":
+
+        where = {
+            "source_type": "confluence"
+        }
+
+    else:
+
+        where = {
+            "source": source
+        }
 
     retrieved = collection.query(
         query_embeddings=[query_embedding],
         n_results=10,
-        where={
-            "source": source
-        }
+        where=where
     )
 
     print("Vector Source:", source)

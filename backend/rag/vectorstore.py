@@ -5,7 +5,8 @@ import uuid
 def store_embeddings(
     chunks: list[str],
     embeddings: list[list[float]],
-    metadatas: list[dict]
+    metadatas: list[dict],
+    ids: list[str] = None
 ):
 
     client = chromadb.PersistentClient(
@@ -16,10 +17,11 @@ def store_embeddings(
         name="knowledge_fabric"
     )
 
-    ids = [
-        str(uuid.uuid4())
-        for _ in chunks
-    ]
+    if ids is None:
+        ids = [
+            str(uuid.uuid4())
+            for _ in chunks
+        ]
 
     collection.add(
         embeddings=embeddings,
@@ -31,3 +33,4 @@ def store_embeddings(
     print(
         f"Stored {collection.count()} records"
     )
+    return ids

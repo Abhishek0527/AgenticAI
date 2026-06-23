@@ -8,6 +8,7 @@ from connectors.jira_loader import (
     load_jira,
     issue_to_text
 )
+from rag.graphstore import GraphStore
 
 import os
 
@@ -110,51 +111,63 @@ def ingest_confluence():
 
 def ingest_jira():
 
-    issues = load_jira()
+    graph_store = GraphStore()
 
-    print(
-        f"\nTotal Jira Issues: {len(issues)}"
-    )
-
-    for issue in issues:
-
-        ticket_id = issue["key"]
+    try:
+        issues = load_jira()
 
         print(
-            f"\nProcessing Jira: {ticket_id}"
+            f"\nTotal Jira Issues: {len(issues)}"
         )
 
-        text = issue_to_text(issue)
+        for issue in issues:
 
-        chunks = chunk_text(text)
+            ticket_id = issue["key"]
 
-        metadatas = []
-
-        for index, _ in enumerate(chunks):
-
-            metadatas.append(
-                {
-                    "source_type": "jira",
-                    "source": ticket_id,
-                    "chunk_index": index
-                }
+            print(
+                f"\nProcessing Jira: {ticket_id}"
             )
 
-        embeddings = embed_chunks(chunks)
+            text = issue_to_text(issue)
 
-        store_embeddings(
-            chunks,
-            embeddings,
-            metadatas
-        )
+            chunks = chunk_text(text)
 
-        print(
-            f"Finished Jira: {ticket_id}"
-        )
+            metadatas = []
 
-        print(
-            f"Chunks Stored: {len(chunks)}"
-        )
+            for index, _ in enumerate(chunks):
+
+                metadatas.append(
+                    {
+                        "source_type": "jira",
+                        "source": ticket_id,
+                        "chunk_index": index
+                    }
+                )
+
+            embeddings = embed_chunks(chunks)
+
+            # Store embeddings in ChromaDB and get the unique chunk IDs
+            ids = store_embeddings(
+                chunks,
+                embeddings,
+                metadatas
+            )
+
+            # Ingest issue metadata & relationships to Neo4j Graph DB
+            graph_store.ingest_jira_issue(issue)
+
+            # Link the chunk nodes to the issue node in Neo4j Graph DB
+            graph_store.link_chunks_to_issue(ticket_id, chunks, ids)
+
+            print(
+                f"Finished Jira: {ticket_id}"
+            )
+
+            print(
+                f"Chunks Stored: {len(chunks)}"
+            )
+    finally:
+        graph_store.close()
 
 
 def ingest():

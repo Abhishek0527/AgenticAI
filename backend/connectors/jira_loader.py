@@ -62,7 +62,7 @@ def load_jira():
 
     params = {
         "jql": "project=SCRUM",
-        "fields": "summary,description,status"
+        "fields": "summary,description,status,project,assignee,reporter,issuelinks,parent,issuetype"
     }
 
     response = requests.get(

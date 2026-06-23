@@ -40,8 +40,14 @@ The ingestion flow will:
 
 
 uv sync
+
 uv run python ingest.py
+
 uv run uvicorn api.app:app --reload
+
+python -m venv 
+
+.\.venv\Scripts\activate
 
 cd .\frontend\
 npm install

@@ -51,7 +51,6 @@ Status:
 {status}
 """
 
-
 def load_jira():
 
     email = os.getenv("ATLASSIAN_EMAIL")
@@ -62,7 +61,13 @@ def load_jira():
 
     params = {
         "jql": "project=SCRUM",
-        "fields": "summary,description,status"
+        "fields": (
+            "summary,"
+            "description,"
+            "status,"
+            "parent,"
+            "issuetype"
+        )
     }
 
     response = requests.get(
@@ -73,21 +78,35 @@ def load_jira():
 
     response.raise_for_status()
 
-    data = response.json()
-
-    return data["issues"]
+    return response.json()["issues"]
 
 
 if __name__ == "__main__":
 
     issues = load_jira()
 
-    print(f"Total Issues: {len(issues)}")
-    print()
-
     for issue in issues:
 
-        text = issue_to_text(issue)
+        fields = issue["fields"]
 
-        print(text)
-        print("=" * 100)
+        parent = fields.get("parent")
+
+        print("\n-----------------------")
+
+        print("Key:", issue["key"])
+
+        print(
+            "Type:",
+            fields["issuetype"]["name"]
+        )
+
+        print(
+            "Title:",
+            fields["summary"]
+        )
+
+        print(
+            "Parent:",
+            parent["key"]
+            if parent else None
+        )

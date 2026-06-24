@@ -1,8 +1,7 @@
-from transformers.models.swiftformer import configuration_swiftformer
 from rag.hybrid_retriver import hybrid_retrieve
 from rag.reranker import rerank_documents
 from rag.generator import generate_reponse
-from rag.retreiver import retrieve_document
+from graph_context import get_graph_context
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,31 +26,101 @@ def chat(req:ChatRequest):
     query = req.query
     source = req.source
 
-    retrieved_docs = hybrid_retrieve(
+    retrieved = hybrid_retrieve(
         query,
         source
     )
 
     reranked, top_score = rerank_documents(
         query,
-        retrieved_docs
+        retrieved["documents"],
+        retrieved["metadatas"]
     )
+
+
 
     if top_score < 0:
 
-        print("General LLM Mode")
-
-        answer = generate_reponse(
-        query
-    )
+         answer = generate_reponse(
+            query
+        )
 
     else:
 
-        print("RAG Mode")
+        enriched_context = []
+
+        for result in reranked:
+
+            enriched_context.append(
+                result["document"]
+            )
+
+            metadata = result.get(
+                "metadata",
+                {}
+            )
+            if not metadata:
+                continue
+
+            source_id = metadata.get(
+                "source"
+            )
+
+            source_type = metadata.get(
+                "source_type"
+            )
+
+            if not source_id or not source_type:
+                continue
+
+            print("\nMetadata:", metadata)
+            print("Source:", source_id)
+            print("Source Type:", source_type)
+
+            graph_context = get_graph_context(
+                source_id,
+                source_type
+            )
+
+            print("\nGraph Context:", graph_context)
+
+            parents = graph_context.get(
+                "parents",
+                []
+            )
+
+            children = graph_context.get(
+                "children",
+                []
+            )
+
+            if parents:
+
+                enriched_context.append(
+                    "Parent Context: "
+                    + ", ".join(parents)
+                )
+
+            if children:
+
+                enriched_context.append(
+                    "Child Context: "
+                    + ", ".join(children)
+                )
+
+        print("\n===== ENRICHED CONTEXT =====")
+
+        for item in enriched_context:
+            print(item)
+            print("-" * 50)
+
+        print("============================\n")
 
         answer = generate_reponse(
             query,
-            reranked
+            enriched_context
         )
 
-    return {"response": answer}
+    return {
+        "response": answer
+    }

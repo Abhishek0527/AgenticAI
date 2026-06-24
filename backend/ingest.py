@@ -43,6 +43,8 @@ def ingest_pdfs():
                 {
                     "source_type": "pdf",
                     "source": pdf_file,
+                    "title": pdf_file,
+                    "project": "learning",
                     "chunk_index": index
                 }
             )
@@ -58,6 +60,7 @@ def ingest_pdfs():
         print(f"Finished PDF: {pdf_file}")
         print(f"Chunks Stored: {len(chunks)}")
 
+
 def ingest_confluence():
 
     pages = load_confluence_pages()
@@ -66,15 +69,22 @@ def ingest_confluence():
         f"\nTotal Confluence Pages: {len(pages)}"
     )
 
-    for source_name, text in pages:
+    for page in pages:
+
+        source_name = page["title"]
+        parent_title = page["parent_title"]
+        text = page["text"]
 
         print(
             f"\nProcessing Confluence: {source_name}"
         )
 
         text = f"""
-            Title: {source_name}
-            {text}
+        Title: {source_name}
+
+        Parent Page: {parent_title}
+
+        {text}
         """
 
         chunks = chunk_text(text)
@@ -87,6 +97,9 @@ def ingest_confluence():
                 {
                     "source_type": "confluence",
                     "source": source_name,
+                    "title": source_name,
+                    "parent_title": parent_title,
+                    "project": "authentication_platform",
                     "chunk_index": index
                 }
             )
@@ -120,11 +133,36 @@ def ingest_jira():
 
         ticket_id = issue["key"]
 
+        title = issue["fields"]["summary"]
+
+        issue_type = (
+            issue["fields"]["issuetype"]["name"]
+        )
+
+        parent = issue["fields"].get("parent")
+
+        parent_key = ""
+
+        if parent:
+            parent_key = parent["key"]
+
         print(
             f"\nProcessing Jira: {ticket_id}"
         )
 
         text = issue_to_text(issue)
+
+        text = f"""
+        Ticket ID: {ticket_id}
+
+        Title: {title}
+
+        Issue Type: {issue_type}
+
+        Parent Ticket: {parent_key}
+
+        {text}
+        """
 
         chunks = chunk_text(text)
 
@@ -136,6 +174,10 @@ def ingest_jira():
                 {
                     "source_type": "jira",
                     "source": ticket_id,
+                    "title": title,
+                    "issue_type": issue_type,
+                    "parent_key": parent_key,
+                    "project": "authentication_platform",
                     "chunk_index": index
                 }
             )
@@ -167,4 +209,5 @@ def ingest():
 
 
 if __name__ == "__main__":
+
     ingest()

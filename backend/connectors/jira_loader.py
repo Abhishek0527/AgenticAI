@@ -59,9 +59,12 @@ def load_jira():
     base_url = os.getenv("ATLASSIAN_BASE_URL")
 
     url = f"{base_url}/rest/api/3/search/jql"
+    project = os.getenv("ATLASSIAN_PROJECT_KEY", 'SCRUM')
+
+    print("project ="+project)
 
     params = {
-        "jql": "project=SCRUM",
+        "jql": f"project={project}",
         "fields": "summary,description,status,project,assignee,reporter,issuelinks,parent,issuetype"
     }
 

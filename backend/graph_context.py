@@ -8,8 +8,8 @@ load_dotenv()
 def get_graph_context(source_id, source_type):
 
     context = {
-        "parents": [],
-        "children": []
+        "parent_ids": [],
+        "child_ids": []
     }
 
     driver = None
@@ -26,9 +26,13 @@ def get_graph_context(source_id, source_type):
 
         with driver.session() as session:
 
-
+            # ====================
+            # Jira Graph
+            # ====================
 
             if source_type == "jira":
+
+                # Parent IDs
 
                 parent_result = session.run(
                     """
@@ -36,16 +40,18 @@ def get_graph_context(source_id, source_type):
                         key:$source_id
                     })
 
-                    RETURN parent.title as title
+                    RETURN parent.key as key
                     """,
                     source_id=source_id
                 )
 
                 for row in parent_result:
 
-                    context["parents"].append(
-                        row["title"]
+                    context["parent_ids"].append(
+                        row["key"]
                     )
+
+                # Child IDs
 
                 child_result = session.run(
                     """
@@ -53,20 +59,25 @@ def get_graph_context(source_id, source_type):
                         key:$source_id
                     })-[]->(child:Jira)
 
-                    RETURN child.title as title
+                    RETURN child.key as key
                     """,
                     source_id=source_id
                 )
 
                 for row in child_result:
 
-                    context["children"].append(
-                        row["title"]
+                    context["child_ids"].append(
+                        row["key"]
                     )
 
-           
+            # ====================
+            # Confluence Graph
+            # ====================
 
             elif source_type == "confluence":
+
+                # Parent IDs
+                # Confluence title itself acts as ID
 
                 parent_result = session.run(
                     """
@@ -81,9 +92,11 @@ def get_graph_context(source_id, source_type):
 
                 for row in parent_result:
 
-                    context["parents"].append(
+                    context["parent_ids"].append(
                         row["title"]
                     )
+
+                # Child IDs
 
                 child_result = session.run(
                     """
@@ -98,7 +111,7 @@ def get_graph_context(source_id, source_type):
 
                 for row in child_result:
 
-                    context["children"].append(
+                    context["child_ids"].append(
                         row["title"]
                     )
 
@@ -118,6 +131,7 @@ def get_graph_context(source_id, source_type):
 
 if __name__ == "__main__":
 
+    print("\nJIRA TEST")
     print(
         get_graph_context(
             "SCRUM-7",
@@ -125,6 +139,7 @@ if __name__ == "__main__":
         )
     )
 
+    print("\nCONFLUENCE TEST")
     print(
         get_graph_context(
             "Password Reset Design",

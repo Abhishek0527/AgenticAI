@@ -1,7 +1,10 @@
 from rag.hybrid_retriver import hybrid_retrieve
 from rag.reranker import rerank_documents
 from rag.generator import generate_reponse
-from graph_context import get_graph_context
+
+from graph_retrieval import build_graph_context
+from rag.context_builder import build_context
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,13 +19,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class ChatRequest(BaseModel):
-    query:str
-    source:str
+    query: str
+    source: str
+
 
 @app.post("/chat")
-def chat(req:ChatRequest):
+def chat(req: ChatRequest):
+
     print("Request received:", req.query)
+
     query = req.query
     source = req.source
 
@@ -37,90 +44,96 @@ def chat(req:ChatRequest):
         retrieved["metadatas"]
     )
 
-
-
     if top_score < 0:
 
-         answer = generate_reponse(
+        answer = generate_reponse(
             query
         )
 
-    else:
+        return {
+            "response": answer,
+            "citations": {
+                "primary": [],
+                "parents": [],
+                "children": []
+            }
+        }
 
-        enriched_context = []
+    # =====================================
+    # ONLY BEST RESULT
+    # =====================================
 
-        for result in reranked:
+    result = reranked[0]
 
-            enriched_context.append(
-                result["document"]
-            )
+    document = result["document"]
 
-            metadata = result.get(
-                "metadata",
-                {}
-            )
-            if not metadata:
-                continue
+    metadata = result["metadata"]
 
-            source_id = metadata.get(
-                "source"
-            )
+    source_id = metadata.get(
+        "source"
+    )
 
-            source_type = metadata.get(
-                "source_type"
-            )
+    source_type = metadata.get(
+        "source_type"
+    )
 
-            if not source_id or not source_type:
-                continue
+    print("\nMetadata:", metadata)
+    print("Source ID:", source_id)
+    print("Source Type:", source_type)
 
-            print("\nMetadata:", metadata)
-            print("Source:", source_id)
-            print("Source Type:", source_type)
+    graph_result = build_graph_context(
+        source_id,
+        source_type
+    )
 
-            graph_context = get_graph_context(
-                source_id,
-                source_type
-            )
+    print(
+        "\nGraph Result:",
+        graph_result
+    )
 
-            print("\nGraph Context:", graph_context)
+    primary_chunks = [
+        document
+    ]
 
-            parents = graph_context.get(
-                "parents",
-                []
-            )
+    parent_chunks = graph_result[
+        "parent_chunks"
+    ]
 
-            children = graph_context.get(
-                "children",
-                []
-            )
+    child_chunks = graph_result[
+        "child_chunks"
+    ]
 
-            if parents:
+    final_context = build_context(
+        primary_chunks,
+        parent_chunks,
+        child_chunks
+    )
 
-                enriched_context.append(
-                    "Parent Context: "
-                    + ", ".join(parents)
-                )
+    print("\n===== FINAL CONTEXT =====")
+    print(final_context)
+    print("=========================\n")
 
-            if children:
-
-                enriched_context.append(
-                    "Child Context: "
-                    + ", ".join(children)
-                )
-
-        print("\n===== ENRICHED CONTEXT =====")
-
-        for item in enriched_context:
-            print(item)
-            print("-" * 50)
-
-        print("============================\n")
-
-        answer = generate_reponse(
-            query,
-            enriched_context
-        )
+    answer = generate_reponse(
+        query,
+        [final_context]
+    )
 
     return {
-        "response": answer
+
+        "response": answer,
+
+        "citations": {
+
+            "primary": [
+                metadata
+            ],
+
+            "parents": graph_result[
+                "parent_citations"
+            ],
+
+            "children": graph_result[
+                "child_citations"
+            ]
+        }
     }

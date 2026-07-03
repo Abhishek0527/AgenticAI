@@ -29,14 +29,22 @@ def  retrieve_document(query:str, source:str):
 
     retrieved = collection.query(
         query_embeddings=[query_embedding],
-        n_results=10,
-        where=where
+        n_results=3,
+        where=where,
+        include=["documents", "metadatas"]
+    )
+
+    print(
+        retrieved["metadatas"][0][0]
     )
 
     print("Vector Source:", source)
     print("Retrieved Chunks:", len(retrieved["documents"][0]))
 
-    return retrieved["documents"][0]
+    return {
+        "documents": retrieved["documents"][0],
+        "metadatas": retrieved["metadatas"][0]
+    }
 
     # print(retrieved["metadatas"])
 
@@ -58,3 +66,10 @@ def  retrieve_document(query:str, source:str):
 # Testing retrieve_document
 # retrieved_documents = retrieve_document("What is React?")
 # print(retrieved_documents)
+
+if __name__ == "__main__":
+
+    retrieve_document(
+        "How does password reset work?",
+        "jira"
+    )

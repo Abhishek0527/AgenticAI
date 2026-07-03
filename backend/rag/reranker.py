@@ -4,7 +4,16 @@ model = CrossEncoder(
     "cross-encoder/ms-marco-MiniLM-L-6-v2"
 )
 
-def rerank_documents(query: str, documents: list[str]):
+
+def rerank_documents(
+    query: str,
+    documents: list[str],
+    metadatas: list[dict]
+):
+
+    if not documents:
+
+        return [], -1
 
     pairs = []
 
@@ -14,18 +23,25 @@ def rerank_documents(query: str, documents: list[str]):
     scores = model.predict(pairs)
 
     ranked = sorted(
-        zip(documents, scores),
-        key=lambda x: x[1],
+        zip(documents, metadatas, scores),
+        key=lambda x: x[2],
         reverse=True
     )
 
-    top_score = ranked[0][1]
+    top_score = ranked[0][2]
 
     print("Top Score:", top_score)
 
-    top_docs = [
-        doc
-        for doc, score in ranked[:3]
-    ]
+    top_results = []
 
-    return top_docs, top_score
+    for doc, metadata, score in ranked[:3]:
+
+        top_results.append(
+            {
+                "document": doc,
+                "metadata": metadata,
+                "score": float(score)
+            }
+        )
+
+    return top_results, top_score

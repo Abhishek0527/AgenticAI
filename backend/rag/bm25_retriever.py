@@ -1,7 +1,6 @@
 from rank_bm25 import BM25Okapi
 import chromadb
 
-
 client = chromadb.PersistentClient(
     path="./chroma_db"
 )
@@ -20,8 +19,8 @@ def bm25_retrieve(
     if source == "jira":
 
         where = {
-        "source_type": "jira"
-    }
+            "source_type": "jira"
+        }
 
     elif source == "confluence":
 
@@ -35,15 +34,20 @@ def bm25_retrieve(
             "source": source
         }
 
-    filtered_docs = collection.get(
-        where=where
-    )["documents"]
+    results = collection.get(
+        where=where,
+        include=["metadatas"]
+    )
+
+    filtered_docs = results["documents"]
+    filtered_metadata = results["metadatas"]
 
     if not filtered_docs:
 
-        print("No BM25 docs found")
-
-        return []
+        return {
+            "documents": [],
+            "metadatas": []
+        }
 
     tokenized_docs = [
         doc.lower().split()
@@ -52,24 +56,29 @@ def bm25_retrieve(
 
     bm25 = BM25Okapi(tokenized_docs)
 
-    tokenized_query = query.lower().split()
-
     scores = bm25.get_scores(
-        tokenized_query
+        query.lower().split()
     )
 
     ranked = sorted(
-        zip(filtered_docs, scores),
-        key=lambda x: x[1],
+        zip(
+            filtered_docs,
+            filtered_metadata,
+            scores
+        ),
+        key=lambda x: x[2],
         reverse=True
     )
 
-    top_docs = [
-        doc
-        for doc, score in ranked[:top_k]
-    ]
+    top_docs = []
+    top_metadata = []
 
-    print("BM25 Source:", source)
-    print("BM25 Docs:", len(filtered_docs))
+    for doc, metadata, score in ranked[:top_k]:
 
-    return top_docs
+        top_docs.append(doc)
+        top_metadata.append(metadata)
+
+    return {
+        "documents": top_docs,
+        "metadatas": top_metadata
+    }

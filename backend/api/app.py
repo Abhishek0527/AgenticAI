@@ -1,8 +1,10 @@
-from transformers.models.swiftformer import configuration_swiftformer
 from rag.hybrid_retriver import hybrid_retrieve
 from rag.reranker import rerank_documents
 from rag.generator import generate_reponse
-from rag.retreiver import retrieve_document
+
+from graph_retrieval import build_graph_context
+from rag.context_builder import build_context
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,41 +19,121 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class ChatRequest(BaseModel):
-    query:str
-    source:str
+    query: str
+    source: str
+
 
 @app.post("/chat")
-def chat(req:ChatRequest):
+def chat(req: ChatRequest):
+
     print("Request received:", req.query)
+
     query = req.query
     source = req.source
 
-    retrieved_docs = hybrid_retrieve(
+    retrieved = hybrid_retrieve(
         query,
         source
     )
 
     reranked, top_score = rerank_documents(
         query,
-        retrieved_docs
+        retrieved["documents"],
+        retrieved["metadatas"]
     )
 
     if top_score < 0:
 
-        print("General LLM Mode")
-
         answer = generate_reponse(
-        query
-    )
-
-    else:
-
-        print("RAG Mode")
-
-        answer = generate_reponse(
-            query,
-            reranked
+            query
         )
 
-    return {"response": answer}
+        return {
+            "response": answer,
+            "citations": {
+                "primary": [],
+                "parents": [],
+                "children": []
+            }
+        }
+
+    # =====================================
+    # ONLY BEST RESULT
+    # =====================================
+
+    result = reranked[0]
+
+    document = result["document"]
+
+    metadata = result["metadata"]
+
+    source_id = metadata.get(
+        "source"
+    )
+
+    source_type = metadata.get(
+        "source_type"
+    )
+
+    print("\nMetadata:", metadata)
+    print("Source ID:", source_id)
+    print("Source Type:", source_type)
+
+    graph_result = build_graph_context(
+        source_id,
+        source_type
+    )
+
+    print(
+        "\nGraph Result:",
+        graph_result
+    )
+
+    primary_chunks = [
+        document
+    ]
+
+    parent_chunks = graph_result[
+        "parent_chunks"
+    ]
+
+    child_chunks = graph_result[
+        "child_chunks"
+    ]
+
+    final_context = build_context(
+        primary_chunks,
+        parent_chunks,
+        child_chunks
+    )
+
+    print("\n===== FINAL CONTEXT =====")
+    print(final_context)
+    print("=========================\n")
+
+    answer = generate_reponse(
+        query,
+        [final_context]
+    )
+
+    return {
+
+        "response": answer,
+
+        "citations": {
+
+            "primary": [
+                metadata
+            ],
+
+            "parents": graph_result[
+                "parent_citations"
+            ],
+
+            "children": graph_result[
+                "child_citations"
+            ]
+        }
+    }

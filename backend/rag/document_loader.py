@@ -16,7 +16,7 @@ def load_pdf(pdf_path):
     return text
 
 
-DEFAULT_CONFLUENCE_URL = "https://pravatjana.atlassian.net/"
+DEFAULT_CONFLUENCE_URL = "https://agenticevo.atlassian.net/"
 
 
 def load_confluence_pages(space=None, page_ids=None):

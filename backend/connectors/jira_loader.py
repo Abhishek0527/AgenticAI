@@ -14,6 +14,12 @@ def extract_text(node):
         if "text" in node:
             texts.append(node["text"])
 
+        # Capture URLs from inlineCard/blockCard nodes (Confluence smart-links)
+        if node.get("type") in ("inlineCard", "blockCard"):
+            url = node.get("attrs", {}).get("url", "")
+            if url:
+                texts.append(url)
+
         for value in node.values():
             texts.extend(extract_text(value))
 

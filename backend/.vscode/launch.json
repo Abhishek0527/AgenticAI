@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Stand Alone  File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "python": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+        },
+        {
+            "name": "Python Debugger: FastAPI",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\.venv\\Scripts\\uvicorn.exe",
+            "args": [
+                "api.app:app",
+                "--port",
+                "8000"
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "jinja": false,
+            "justMyCode": true,
+            "python": "${workspaceFolder}\\.venv\\Scripts\\python.exe"
+        }
+       ]
+}

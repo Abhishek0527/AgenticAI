@@ -12,19 +12,35 @@ def build_metadata_where(
     optional user-provided metadata filters.
     """
 
-    where: dict[str, Any] = {}
+    clauses: list[dict[str, Any]] = []
 
     if source == "jira":
-        where["source_type"] = "jira"
+        clauses.append({
+            "source_type": "jira"
+        })
     elif source == "confluence":
-        where["source_type"] = "confluence"
+        clauses.append({
+            "source_type": "confluence"
+        })
     elif source:
-        where["source"] = source
+        clauses.append({
+            "source": source
+        })
 
     if metadata_filters:
         for key, value in metadata_filters.items():
             if value is None:
                 continue
-            where[key] = value
+            clauses.append({
+                key: value
+            })
 
-    return where or None
+    if not clauses:
+        return None
+
+    if len(clauses) == 1:
+        return clauses[0]
+
+    return {
+        "$and": clauses
+    }

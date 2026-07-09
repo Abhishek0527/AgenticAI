@@ -35,14 +35,16 @@ def chat(req: ChatRequest):
 
     print("Request received:", req.query)
 
-    parsed_query, inferred_filters = (
+    parse_result = (
         parse_query_metadata(req.query)
     )
 
-    metadata_filters = dict(inferred_filters)
+    metadata_filters = dict(
+        parse_result.hard_filters
+    )
     metadata_filters.update(req.metadata_filters)
 
-    query = parsed_query
+    query = parse_result.cleaned_query
     source = req.source
 
     # Let inferred source_type fully drive retrieval when possible.
@@ -57,7 +59,8 @@ def chat(req: ChatRequest):
     retrieved = hybrid_retrieve(
         query,
         source,
-        metadata_filters=metadata_filters
+        metadata_filters=metadata_filters,
+        soft_filters=parse_result.soft_filters
     )
 
     reranked, top_score = rerank_documents(

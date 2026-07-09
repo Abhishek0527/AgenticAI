@@ -1,13 +1,15 @@
 from rag.hybrid_retriver import hybrid_retrieve
 from rag.reranker import rerank_documents
 from rag.generator import generate_reponse
+from rag.query_parser import parse_query_metadata
 
 from graph_retrieval import build_graph_context
 from rag.context_builder import build_context
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Any
 
 app = FastAPI()
 
@@ -22,7 +24,10 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     query: str
-    source: str
+    source: str | None = None
+    metadata_filters: dict[str, Any] = Field(
+        default_factory=dict
+    )
 
 
 @app.post("/chat")
@@ -30,12 +35,29 @@ def chat(req: ChatRequest):
 
     print("Request received:", req.query)
 
-    query = req.query
+    parsed_query, inferred_filters = (
+        parse_query_metadata(req.query)
+    )
+
+    metadata_filters = dict(inferred_filters)
+    metadata_filters.update(req.metadata_filters)
+
+    query = parsed_query
     source = req.source
+
+    # Let inferred source_type fully drive retrieval when possible.
+    if metadata_filters.get("source"):
+        source = metadata_filters["source"]
+    elif metadata_filters.get("source_type") in {
+        "jira",
+        "confluence"
+    }:
+        source = metadata_filters["source_type"]
 
     retrieved = hybrid_retrieve(
         query,
-        source
+        source,
+        metadata_filters=metadata_filters
     )
 
     reranked, top_score = rerank_documents(

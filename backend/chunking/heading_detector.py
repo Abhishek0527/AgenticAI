@@ -275,7 +275,15 @@ def extract_document_title(pdf_path):
         key=lambda x: (-x[0], x[1])
     )
 
-    return candidates[0][2]
+    if candidates:
+        return candidates[0][2]
+
+    # Fallback for scanned/image-heavy PDFs where no text spans are extracted.
+    return re.sub(
+        r"\.[^.]+$",
+        "",
+        pdf_path.split("\\")[-1].split("/")[-1]
+    )
 
 
 # Example

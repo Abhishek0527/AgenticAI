@@ -2,16 +2,22 @@ from rag.bm25_retriever import bm25_retrieve
 from rag.retreiver import retrieve_document
 
 
-def hybrid_retrieve(query, source):
+def hybrid_retrieve(
+    query,
+    source=None,
+    metadata_filters: dict | None = None
+):
 
     vector_results = retrieve_document(
         query,
-        source
+        source,
+        metadata_filters=metadata_filters
     )
 
     bm25_results = bm25_retrieve(
         query,
-        source
+        source,
+        metadata_filters=metadata_filters
     )
 
     merged_docs = []

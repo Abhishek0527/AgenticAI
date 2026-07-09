@@ -1,12 +1,16 @@
 from connectors.confluence_loader import load_confluence_pages
 from rag.vectorstore import store_embeddings
 from rag.embedding import embed_chunks
-from rag.chunker import chunk_text
-from rag.document_loader import load_pdf
+from chunking.pdf_ingestion import (
+    build_pdf_chunks_with_metadata
+)
+from chunking.structured_text_ingestion import (
+    build_confluence_chunks_with_metadata,
+    build_jira_chunks_with_metadata,
+)
 
 from connectors.jira_loader import (
-    load_jira,
-    issue_to_text
+    load_jira
 )
 
 import os
@@ -31,23 +35,9 @@ def ingest_pdfs():
 
         print(f"\nProcessing PDF: {pdf_file}")
 
-        text = load_pdf(pdf_path)
-
-        chunks = chunk_text(text)
-
-        metadatas = []
-
-        for index, _ in enumerate(chunks):
-
-            metadatas.append(
-                {
-                    "source_type": "pdf",
-                    "source": pdf_file,
-                    "title": pdf_file,
-                    "project": "learning",
-                    "chunk_index": index
-                }
-            )
+        chunks, metadatas = build_pdf_chunks_with_metadata(
+            pdf_path
+        )
 
         embeddings = embed_chunks(chunks)
 
@@ -73,36 +63,15 @@ def ingest_confluence():
 
         source_name = page["title"]
         parent_title = page["parent_title"]
-        text = page["text"]
-
         print(
             f"\nProcessing Confluence: {source_name}"
         )
 
-        text = f"""
-        Title: {source_name}
-
-        Parent Page: {parent_title}
-
-        {text}
-        """
-
-        chunks = chunk_text(text)
-
-        metadatas = []
-
-        for index, _ in enumerate(chunks):
-
-            metadatas.append(
-                {
-                    "source_type": "confluence",
-                    "source": source_name,
-                    "title": source_name,
-                    "parent_title": parent_title,
-                    "project": "authentication_platform",
-                    "chunk_index": index
-                }
+        chunks, metadatas = (
+            build_confluence_chunks_with_metadata(
+                page
             )
+        )
 
         embeddings = embed_chunks(chunks)
 
@@ -150,37 +119,11 @@ def ingest_jira():
             f"\nProcessing Jira: {ticket_id}"
         )
 
-        text = issue_to_text(issue)
-
-        text = f"""
-        Ticket ID: {ticket_id}
-
-        Title: {title}
-
-        Issue Type: {issue_type}
-
-        Parent Ticket: {parent_key}
-
-        {text}
-        """
-
-        chunks = chunk_text(text)
-
-        metadatas = []
-
-        for index, _ in enumerate(chunks):
-
-            metadatas.append(
-                {
-                    "source_type": "jira",
-                    "source": ticket_id,
-                    "title": title,
-                    "issue_type": issue_type,
-                    "parent_key": parent_key,
-                    "project": "authentication_platform",
-                    "chunk_index": index
-                }
+        chunks, metadatas = (
+            build_jira_chunks_with_metadata(
+                issue
             )
+        )
 
         embeddings = embed_chunks(chunks)
 

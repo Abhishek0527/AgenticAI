@@ -6,7 +6,8 @@ from typing import List, Optional
 import fitz
 import nltk
 from nltk.tokenize import sent_tokenize
-from tokenizer import BPETokenizer
+import re
+from .tokenizer import BPETokenizer
 
 
 # ============================================================
@@ -288,7 +289,23 @@ class SemanticChunker:
         except LookupError:
             nltk.download("punkt")
 
-        sentences = sent_tokenize(text)
+        try:
+            nltk.data.find("tokenizers/punkt_tab/english")
+        except LookupError:
+            nltk.download("punkt_tab")
+
+        try:
+            sentences = sent_tokenize(text)
+        except LookupError:
+            # Fallback for environments where punkt assets are still incomplete.
+            sentences = [
+                sentence.strip()
+                for sentence in re.split(
+                    r"(?<=[.!?])\s+",
+                    text
+                )
+                if sentence.strip()
+            ]
 
         chunks = []
 

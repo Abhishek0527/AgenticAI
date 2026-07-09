@@ -3,7 +3,6 @@ import { useState } from "react";
 function App() {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
-  const [source, setSource] = useState("jira");
   const [citations, setCitations] = useState(null);
 
   const askQuestion = async () => {
@@ -16,7 +15,6 @@ function App() {
         },
         body: JSON.stringify({
           query: query,
-          source: source,
         }),
       }
     );
@@ -39,18 +37,8 @@ function App() {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Ask a question..."
+          placeholder="Ask about Jira, Confluence, or PDFs..."
         />
-
-        <select
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-        >
-          {/* <option value="react.pdf">React</option>
-          <option value="langgraph.pdf">LangGraph</option> */}
-          <option value="jira">Jira</option>
-          <option value="confluence">Confluence</option>
-        </select>
 
         <button onClick={askQuestion}>
           Ask

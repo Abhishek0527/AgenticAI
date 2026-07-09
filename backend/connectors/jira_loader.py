@@ -40,16 +40,16 @@ def issue_to_text(issue):
     )
 
     return f"""
-Ticket ID: {key}
+    Ticket ID: {key}
 
-Title: {summary}
+    Title: {summary}
 
-Description:
-{description_text}
+    Description:
+    {description_text}
 
-Status:
-{status}
-"""
+    Status:
+    {status}
+    """
 
 def load_jira():
 

@@ -131,6 +131,7 @@ def load_confluence_pages(space=None, page_ids=None):
                 "page_id": page_id,
                 "title": title,
                 "parent_title": parent_title,
+                "html": html,
                 "text": text
             }
         )

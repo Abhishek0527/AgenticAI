@@ -13,7 +13,6 @@ collection = client.get_or_create_collection(
 def retrieve_by_source(
     source_id: str
 ):
-
     result = collection.get(
         where={
             "source": source_id

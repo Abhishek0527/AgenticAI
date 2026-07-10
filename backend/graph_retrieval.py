@@ -131,3 +131,9 @@ if __name__ == "__main__":
 
     for chunk in result["child_chunks"]:
         print(chunk)
+
+    print("\nLINKED CHUNKS")
+    print("=" * 50)
+
+    for chunk in result["linked_citations"]:
+        print(chunk)

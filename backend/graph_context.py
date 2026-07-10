@@ -9,7 +9,8 @@ def get_graph_context(source_id, source_type):
 
     context = {
         "parent_ids": [],
-        "child_ids": []
+        "child_ids": [],
+        "linked_ids": []
     }
 
     driver = None
@@ -70,6 +71,25 @@ def get_graph_context(source_id, source_type):
                         row["key"]
                     )
 
+                # Linked Confluence pages
+
+                linked_result = session.run(
+                    """
+                    MATCH (j:Jira {
+                        key:$source_id
+                    })-[:REFERENCES_DOC]->(c:Confluence)
+
+                    RETURN c.title as title
+                    """,
+                    source_id=source_id
+                )
+
+                for row in linked_result:
+
+                    context["linked_ids"].append(
+                        row["title"]
+                    )
+
             # ====================
             # Confluence Graph
             # ====================
@@ -113,6 +133,25 @@ def get_graph_context(source_id, source_type):
 
                     context["child_ids"].append(
                         row["title"]
+                    )
+
+                # Linked Jira tickets
+
+                linked_result = session.run(
+                    """
+                    MATCH (c:Confluence {
+                        title:$source_id
+                    })-[:MENTIONS_TICKET]->(j:Jira)
+
+                    RETURN j.key as key
+                    """,
+                    source_id=source_id
+                )
+
+                for row in linked_result:
+
+                    context["linked_ids"].append(
+                        row["key"]
                     )
 
     except Exception as e:

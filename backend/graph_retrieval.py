@@ -14,12 +14,15 @@ def build_graph_context(
 
     parent_chunks = []
     child_chunks = []
+    linked_chunks = []
 
     parent_citations = []
     child_citations = []
+    linked_citations = []
 
     seen_parents = set()
     seen_children = set()
+    seen_linked = set()
 
     # ====================
     # Parent Retrieval
@@ -67,15 +70,45 @@ def build_graph_context(
             child_id
         )
 
+    # ====================
+    # Linked Retrieval
+    # (Cross-system: Jira ↔ Confluence)
+    # ====================
+
+    for linked_id in graph_context.get(
+        "linked_ids", []
+    ):
+
+        if linked_id in seen_linked:
+            continue
+
+        seen_linked.add(linked_id)
+
+        result = retrieve_by_source(
+            linked_id
+        )
+
+        linked_chunks.extend(
+            result["documents"]
+        )
+
+        linked_citations.append(
+            linked_id
+        )
+
     return {
 
         "parent_chunks": parent_chunks,
 
         "child_chunks": child_chunks,
 
+        "linked_chunks": linked_chunks,
+
         "parent_citations": parent_citations,
 
-        "child_citations": child_citations
+        "child_citations": child_citations,
+
+        "linked_citations": linked_citations
 
     }
 
@@ -83,7 +116,7 @@ def build_graph_context(
 if __name__ == "__main__":
 
     result = build_graph_context(
-        "SCRUM-7",
+        "GENAI-1",
         "jira"
     )
 

@@ -128,10 +128,15 @@ def chat(req: ChatRequest):
         "child_chunks"
     ]
 
+    linked_chunks = graph_result[
+        "linked_chunks"
+    ]
+
     final_context = build_context(
         primary_chunks,
         parent_chunks,
-        child_chunks
+        child_chunks,
+        linked_chunks
     )
 
     print("\n===== FINAL CONTEXT =====")
@@ -159,6 +164,9 @@ def chat(req: ChatRequest):
 
             "children": graph_result[
                 "child_citations"
+            ],
+            "linked": graph_result[
+                "linked_citations"
             ]
         }
     }

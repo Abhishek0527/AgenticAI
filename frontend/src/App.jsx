@@ -117,6 +117,23 @@ function App() {
                 </div>
               )}
 
+               {citations.linked?.length > 0 && (
+                <div className="citation-group">
+                  <strong>Linked Context</strong>
+
+                  {citations.linked.map(
+                    (item, index) => (
+                      <div
+                        key={index}
+                        className="citation-card"
+                      >
+                        {item}
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+
             </div>
           )}
 

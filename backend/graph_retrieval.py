@@ -116,8 +116,8 @@ def build_graph_context(
 if __name__ == "__main__":
 
     result = build_graph_context(
-        "GENAI-1",
-        "jira"
+        "Credit Card Transaction Dispute",
+        "confluence"
     )
 
     print("\nPARENT CHUNKS")

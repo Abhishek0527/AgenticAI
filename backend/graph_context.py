@@ -135,7 +135,8 @@ def get_graph_context(source_id, source_type):
                         row["title"]
                     )
 
-                # Linked Jira tickets
+                # Linked Jira tickets mentioned from
+                # inside the Confluence page
 
                 linked_result = session.run(
                     """
@@ -149,6 +150,28 @@ def get_graph_context(source_id, source_type):
                 )
 
                 for row in linked_result:
+
+                    context["linked_ids"].append(
+                        row["key"]
+                    )
+
+                # Linked Jira tickets that explicitly
+                # reference this Confluence page
+
+                reverse_linked_result = session.run(
+                    """
+                    MATCH (j:Jira)-[:REFERENCES_DOC]->(
+                        c:Confluence {
+                            title:$source_id
+                        }
+                    )
+
+                    RETURN j.key as key
+                    """,
+                    source_id=source_id
+                )
+
+                for row in reverse_linked_result:
 
                     context["linked_ids"].append(
                         row["key"]

@@ -5,11 +5,13 @@ from rag.query_parser import parse_query_metadata
 
 from graph_retrieval import build_graph_context
 from rag.context_builder import build_context
+from source_retriever import retrieve_by_source
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any
+import re
 
 app = FastAPI()
 
@@ -44,35 +46,27 @@ def chat(req: ChatRequest):
     )
     metadata_filters.update(req.metadata_filters)
 
-    query = parse_result.cleaned_query
+    retrieval_query = parse_result.cleaned_query
+    answer_query = req.query
     source = req.source
 
-    # Let inferred source_type fully drive retrieval when possible.
-    if metadata_filters.get("source"):
-        source = metadata_filters["source"]
-    elif metadata_filters.get("source_type") in {
-        "jira",
-        "confluence"
-    }:
-        source = metadata_filters["source_type"]
-
     retrieved = hybrid_retrieve(
-        query,
+        retrieval_query,
         source,
         metadata_filters=metadata_filters,
         soft_filters=parse_result.soft_filters
     )
 
     reranked, top_score = rerank_documents(
-        query,
+        answer_query,
         retrieved["documents"],
         retrieved["metadatas"]
     )
 
-    if top_score < 0:
+    if top_score < 0 and not retrieved["documents"]:
 
         answer = generate_reponse(
-            query
+            answer_query
         )
 
         return {
@@ -84,53 +78,128 @@ def chat(req: ChatRequest):
             }
         }
 
-    # =====================================
-    # ONLY BEST RESULT
-    # =====================================
-
-    result = reranked[0]
-
-    document = result["document"]
-
-    metadata = result["metadata"]
-
-    source_id = metadata.get(
-        "source"
+    list_intent = _is_list_intent(
+        answer_query
     )
 
-    source_type = metadata.get(
-        "source_type"
-    )
+    if list_intent:
+        primary_chunks = []
+        parent_chunks = []
+        child_chunks = []
+        linked_chunks = []
+        primary_citations = []
+        parent_citations = []
+        child_citations = []
+        linked_citations = []
+        seen_sources = set()
 
-    print("\nMetadata:", metadata)
-    print("Source ID:", source_id)
-    print("Source Type:", source_type)
+        for result in reranked[:5]:
+            metadata = result["metadata"]
+            source_id = metadata.get("source")
+            source_type = metadata.get(
+                "source_type"
+            )
 
-    graph_result = build_graph_context(
-        source_id,
-        source_type
-    )
+            if not source_id or source_id in seen_sources:
+                continue
 
-    print(
-        "\nGraph Result:",
-        graph_result
-    )
+            seen_sources.add(source_id)
+            primary_citations.append(metadata)
 
-    primary_chunks = [
-        document
-    ]
+            primary_result = retrieve_by_source(
+                source_id
+            )
+            primary_chunks.extend(
+                primary_result["documents"] or [
+                    result["document"]
+                ]
+            )
 
-    parent_chunks = graph_result[
-        "parent_chunks"
-    ]
+            graph_result = build_graph_context(
+                source_id,
+                source_type
+            )
 
-    child_chunks = graph_result[
-        "child_chunks"
-    ]
+            parent_chunks.extend(
+                graph_result["parent_chunks"]
+            )
+            child_chunks.extend(
+                graph_result["child_chunks"]
+            )
+            linked_chunks.extend(
+                graph_result["linked_chunks"]
+            )
+            parent_citations.extend(
+                graph_result["parent_citations"]
+            )
+            child_citations.extend(
+                graph_result["child_citations"]
+            )
+            linked_citations.extend(
+                graph_result["linked_citations"]
+            )
 
-    linked_chunks = graph_result[
-        "linked_chunks"
-    ]
+        metadata = primary_citations[0]
+    else:
+        result = reranked[0]
+
+        document = result["document"]
+
+        metadata = result["metadata"]
+
+        source_id = metadata.get(
+            "source"
+        )
+
+        source_type = metadata.get(
+            "source_type"
+        )
+
+        print("\nMetadata:", metadata)
+        print("Source ID:", source_id)
+        print("Source Type:", source_type)
+
+        graph_result = build_graph_context(
+            source_id,
+            source_type
+        )
+
+        print(
+            "\nGraph Result:",
+            graph_result
+        )
+
+        primary_result = retrieve_by_source(
+            source_id
+        ) if source_id else {
+            "documents": [document]
+        }
+
+        primary_chunks = primary_result[
+            "documents"
+        ] or [document]
+
+        parent_chunks = graph_result[
+            "parent_chunks"
+        ]
+
+        child_chunks = graph_result[
+            "child_chunks"
+        ]
+
+        linked_chunks = graph_result[
+            "linked_chunks"
+        ]
+        primary_citations = [metadata]
+        parent_citations = graph_result[
+            "parent_citations"
+        ]
+        child_citations = graph_result[
+            "child_citations"
+        ]
+        linked_citations = graph_result[
+            "linked_citations"
+        ]
 
     final_context = build_context(
         primary_chunks,
@@ -144,7 +213,7 @@ def chat(req: ChatRequest):
     print("=========================\n")
 
     answer = generate_reponse(
-        query,
+        answer_query,
         [final_context]
     )
 
@@ -154,19 +223,34 @@ def chat(req: ChatRequest):
 
         "citations": {
 
-            "primary": [
-                metadata
-            ],
-
-            "parents": graph_result[
-                "parent_citations"
-            ],
-
-            "children": graph_result[
-                "child_citations"
-            ],
-            "linked": graph_result[
-                "linked_citations"
-            ]
+            "primary": primary_citations,
+            "parents": _dedupe_list(
+                parent_citations
+            ),
+            "children": _dedupe_list(
+                child_citations
+            ),
+            "linked": _dedupe_list(
+                linked_citations
+            )
         }
     }
+
+
+def _is_list_intent(query: str) -> bool:
+    lowered = query.lower()
+    return bool(
+        re.search(
+            r"\b(which|list|show all|all|what are)\b",
+            lowered
+        )
+    )
+
+
+def _dedupe_list(values: list[Any]) -> list[Any]:
+    deduped = []
+    for value in values:
+        if value in deduped:
+            continue
+        deduped.append(value)
+    return deduped

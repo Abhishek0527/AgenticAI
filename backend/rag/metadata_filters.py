@@ -31,6 +31,13 @@ def build_metadata_where(
         for key, value in metadata_filters.items():
             if value is None:
                 continue
+            if isinstance(value, list):
+                clauses.append({
+                    key: {
+                        "$in": value
+                    }
+                })
+                continue
             clauses.append({
                 key: value
             })

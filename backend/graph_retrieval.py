@@ -39,6 +39,9 @@ def build_graph_context(
             parent_id
         )
 
+        if not result["documents"]:
+            continue
+
         parent_chunks.extend(
             result["documents"]
         )
@@ -61,6 +64,9 @@ def build_graph_context(
         result = retrieve_by_source(
             child_id
         )
+
+        if not result["documents"]:
+            continue
 
         child_chunks.extend(
             result["documents"]
@@ -87,6 +93,9 @@ def build_graph_context(
         result = retrieve_by_source(
             linked_id
         )
+
+        if not result["documents"]:
+            continue
 
         linked_chunks.extend(
             result["documents"]

@@ -13,6 +13,12 @@ collection = client.get_or_create_collection(
 def retrieve_by_source(
     source_id: str
 ):
+    if not source_id:
+        return {
+            "documents": [],
+            "metadatas": []
+        }
+
     result = collection.get(
         where={
             "source": source_id

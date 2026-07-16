@@ -27,9 +27,11 @@ def generate_reponse(query, context=None):
     context_text = "\n\n".join(context)
 
     prompt = f"""
-    Answer the question in maximum 3 sentences.
+    Answer the question in maximum 4 sentences.
 
-    Use provided context as well as your input abhout the query to generate the response.
+    Use the provided context to answer the question clearly and directly.
+    Prefer the most relevant details from primary context first, then use parent, child, and linked context only when they help.
+    If the question asks for multiple items, answer as a short list in plain text.
 
     If the answer is not in the context, say:
     "I could not find relevant information."

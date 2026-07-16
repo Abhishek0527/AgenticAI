@@ -8,6 +8,7 @@ from typing import Any
 
 import anthropic
 from dotenv import load_dotenv
+from rag.entity_resolver import resolve_query_entity
 
 load_dotenv()
 
@@ -18,7 +19,11 @@ STATUS_PATTERNS = {
     "resolved": "Done",
     "completed": "Done",
     "in progress": "In Progress",
-    "open": "Open",
+    "open": [
+        "Open",
+        "To Do",
+        "In Progress",
+    ],
     "todo": "To Do",
     "to do": "To Do",
 }
@@ -110,7 +115,11 @@ def parse_query_metadata(
     )
 
     normalized_soft_filters = _normalize_soft_filters(
-        llm_soft_filters
+        _derive_soft_filters(
+            original_query,
+            merged_hard_filters,
+            llm_soft_filters
+        )
     )
 
     cleaned_query = (
@@ -143,10 +152,7 @@ def _parse_with_rules(
     if "confluence" in lowered_query:
         metadata_filters["source_type"] = "confluence"
 
-    if (
-        "pdf" in lowered_query
-        or "document" in lowered_query
-    ):
+    if "pdf" in lowered_query:
         metadata_filters["source_type"] = "pdf"
 
     for pattern, status in STATUS_PATTERNS.items():
@@ -169,6 +175,13 @@ def _parse_with_rules(
     if ticket_match:
         metadata_filters["source"] = ticket_match.group(1)
 
+    if "status" in lowered_query:
+        metadata_filters["section_type"] = "status"
+    elif "summary" in lowered_query:
+        metadata_filters["section_type"] = "summary"
+    elif "description" in lowered_query:
+        metadata_filters["section_type"] = "description"
+
     page_match = re.search(
         r"\bpage\s+(\d+)\b",
         lowered_query
@@ -186,6 +199,25 @@ def _parse_with_rules(
     if project_match:
         metadata_filters["project"] = (
             project_match.group(1)
+        )
+
+    preferred_source_type = metadata_filters.get(
+        "source_type"
+    )
+    resolved_entity, _matched_source_types = (
+        resolve_query_entity(
+            query,
+            preferred_source_type=preferred_source_type,
+        )
+    )
+
+    if resolved_entity is not None:
+        metadata_filters["source"] = (
+            resolved_entity.source_id
+        )
+        metadata_filters.setdefault(
+            "source_type",
+            resolved_entity.source_type
         )
 
     cleaned_query = _remove_filter_terms(query)
@@ -302,6 +334,33 @@ User query:
         return query, {}, {}
 
 
+def _derive_soft_filters(
+    query: str,
+    hard_filters: dict[str, Any],
+    llm_soft_filters: dict[str, Any]
+) -> dict[str, Any]:
+    if hard_filters:
+        return {}
+
+    resolved_entity, matched_source_types = (
+        resolve_query_entity(query)
+    )
+
+    if resolved_entity is not None:
+        return {
+            "source_type": [
+                resolved_entity.source_type
+            ]
+        }
+
+    if len(matched_source_types) > 1:
+        return {
+            "source_type": matched_source_types
+        }
+
+    return llm_soft_filters
+
+
 def _extract_json_object(
     raw_text: str
 ) -> dict[str, Any] | None:
@@ -392,6 +451,29 @@ def _normalize_filter_value(
     if value is None:
         return None
 
+    if isinstance(value, list):
+        normalized_values = []
+        for item in value:
+            normalized_item = _normalize_filter_value(
+                key,
+                item
+            )
+            if normalized_item is None:
+                continue
+            if isinstance(normalized_item, list):
+                normalized_values.extend(
+                    normalized_item
+                )
+            else:
+                normalized_values.append(
+                    normalized_item
+                )
+        deduped_values = []
+        for item in normalized_values:
+            if item not in deduped_values:
+                deduped_values.append(item)
+        return deduped_values or None
+
     if key == "page":
         try:
             return int(value)
@@ -428,7 +510,6 @@ def _remove_filter_terms(query: str) -> str:
         r"\bjira\b",
         r"\bconfluence\b",
         r"\bpdf\b",
-        r"\bdocument\b",
         r"\bdone\b",
         r"\bclosed\b",
         r"\bresolved\b",
@@ -454,6 +535,18 @@ def _remove_filter_terms(query: str) -> str:
             flags=re.IGNORECASE
         )
 
+    cleaned = re.sub(
+        r"\b(in|from|on|for|about|within)\s*([?.!,])",
+        r"\2",
+        cleaned,
+        flags=re.IGNORECASE
+    )
+    cleaned = re.sub(
+        r"\b(in|from|on|for|about|within)\s*$",
+        "",
+        cleaned,
+        flags=re.IGNORECASE
+    )
     cleaned = re.sub(
         r"\s+",
         " ",

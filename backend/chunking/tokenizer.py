@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import List, Tuple
 
 from transformers import AutoTokenizer
+
+# Local path to the saved tokenizer
+_LOCAL_TOKENIZER_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "models", "Qwen3-8B-tokenizer"
+)
 
 
 # ==========================================================
@@ -15,7 +21,7 @@ from transformers import AutoTokenizer
 @dataclass
 class TokenizerConfig:
 
-    model_name: str = "Qwen/Qwen3-8B"
+    model_name: str = _LOCAL_TOKENIZER_DIR
 
     add_special_tokens: bool = False
 
@@ -36,7 +42,7 @@ class BPETokenizer:
 
         self.config = config or TokenizerConfig()
 
-        self.tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
 
     # ------------------------------------------------------
 

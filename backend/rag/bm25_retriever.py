@@ -1,5 +1,6 @@
 from rank_bm25 import BM25Okapi
 import chromadb
+from rag.metadata_filters import build_metadata_where
 
 client = chromadb.PersistentClient(
     path="./chroma_db"
@@ -12,32 +13,23 @@ collection = client.get_or_create_collection(
 
 def bm25_retrieve(
     query: str,
-    source: str,
+    source: str | None = None,
+    metadata_filters: dict | None = None,
     top_k: int = 10
 ):
-
-    if source == "jira":
-
-        where = {
-            "source_type": "jira"
-        }
-
-    elif source == "confluence":
-
-        where = {
-            "source_type": "confluence"
-        }
-
-    else:
-
-        where = {
-            "source": source
-        }
-
-    results = collection.get(
-        where=where,
-        include=["metadatas"]
+    where = build_metadata_where(
+        source,
+        metadata_filters
     )
+
+    get_kwargs = {
+        "include": ["documents", "metadatas"]
+    }
+
+    if where:
+        get_kwargs["where"] = where
+
+    results = collection.get(**get_kwargs)
 
     filtered_docs = results["documents"]
     filtered_metadata = results["metadatas"]
@@ -48,6 +40,9 @@ def bm25_retrieve(
             "documents": [],
             "metadatas": []
         }
+
+    print("BM25 Source:", source)
+    print("BM25 Filters:", where)
 
     tokenized_docs = [
         doc.lower().split()

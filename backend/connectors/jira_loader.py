@@ -39,17 +39,27 @@ def issue_to_text(issue):
         extract_text(description)
     )
 
+    parent = issue["fields"].get("parent")
+
+    parent_info = f"Parent: {parent['key']}" if parent else "Parent: None"
+
+    issue_type = issue["fields"]["issuetype"]["name"]
+
     return f"""
-Ticket ID: {key}
+    Ticket ID: {key}
 
-Title: {summary}
+    Title: {summary}
 
-Description:
-{description_text}
+    Type: {issue_type}
 
-Status:
-{status}
-"""
+    {parent_info}
+
+    Description:
+    {description_text}
+
+    Status:
+    {status}
+    """
 
 def load_jira():
 
@@ -57,17 +67,25 @@ def load_jira():
     token = os.getenv("ATLASSIAN_API_TOKEN")
     base_url = os.getenv("ATLASSIAN_BASE_URL")
 
+    # Support comma-separated project keys or default to SCRUM
+    project_keys = os.getenv("JIRA_PROJECT_KEY", "SCRUM").split(",")
+    project_keys = [key.strip() for key in project_keys]
+    
+    # Build JQL query for multiple projects
+    projects_jql = " OR ".join([f"project={key}" for key in project_keys])
+
     url = f"{base_url}/rest/api/3/search/jql"
 
     params = {
-        "jql": "project=SCRUM",
+        "jql": f"({projects_jql})",
         "fields": (
             "summary,"
             "description,"
             "status,"
             "parent,"
             "issuetype"
-        )
+        ),
+        "maxResults": 1000
     }
 
     response = requests.get(

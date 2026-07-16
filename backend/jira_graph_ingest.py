@@ -17,6 +17,69 @@ issues = load_jira()
 
 with driver.session() as session:
 
+    # First pass: Create all Jira nodes
+    for issue in issues:
+        key = issue["key"]
+        summary = issue["fields"]["summary"]
+        status = issue["fields"]["status"]["name"]
+        issue_type = issue["fields"]["issuetype"]["name"]
+
+        create_node_query = """
+        MERGE (j:Jira {key: $key})
+        SET j.summary = $summary,
+            j.status = $status,
+            j.type = $type
+        """
+
+        session.run(
+            create_node_query,
+            key=key,
+            summary=summary,
+            status=status,
+            type=issue_type
+        )
+
+    # Create project node and link top-level tickets
+
+    project_key = os.getenv(
+        "JIRA_PROJECT_KEY", "SCRUM"
+    )
+
+    session.run(
+        """
+        MERGE (p:Jira {key: $project_key})
+        SET p.type = "Project"
+        """,
+        project_key=project_key
+    )
+
+    for issue in issues:
+
+        parent = issue["fields"].get("parent")
+
+        if parent:
+            # Has a parent issue — handled below
+            continue
+
+        child_key = issue["key"]
+
+        session.run(
+            """
+            MATCH (project:Jira {
+                key: $project_key
+            })
+
+            MATCH (child:Jira {
+                key: $child_key
+            })
+
+            MERGE (project)-[:BELONGS_TO_PROJECT]->(child)
+            """,
+            project_key=project_key,
+            child_key=child_key
+        )
+
+    # Second pass: Create parent-child relationships
     for issue in issues:
 
         parent = issue["fields"].get("parent")
@@ -56,3 +119,6 @@ with driver.session() as session:
         )
 
 
+driver.close()
+
+print("Jira Graph Ingestion Complete")

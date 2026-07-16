@@ -14,12 +14,15 @@ def build_graph_context(
 
     parent_chunks = []
     child_chunks = []
+    linked_chunks = []
 
     parent_citations = []
     child_citations = []
+    linked_citations = []
 
     seen_parents = set()
     seen_children = set()
+    seen_linked = set()
 
     # ====================
     # Parent Retrieval
@@ -35,6 +38,9 @@ def build_graph_context(
         result = retrieve_by_source(
             parent_id
         )
+
+        if not result["documents"]:
+            continue
 
         parent_chunks.extend(
             result["documents"]
@@ -59,6 +65,9 @@ def build_graph_context(
             child_id
         )
 
+        if not result["documents"]:
+            continue
+
         child_chunks.extend(
             result["documents"]
         )
@@ -67,15 +76,48 @@ def build_graph_context(
             child_id
         )
 
+    # ====================
+    # Linked Retrieval
+    # (Cross-system: Jira ↔ Confluence)
+    # ====================
+
+    for linked_id in graph_context.get(
+        "linked_ids", []
+    ):
+
+        if linked_id in seen_linked:
+            continue
+
+        seen_linked.add(linked_id)
+
+        result = retrieve_by_source(
+            linked_id
+        )
+
+        if not result["documents"]:
+            continue
+
+        linked_chunks.extend(
+            result["documents"]
+        )
+
+        linked_citations.append(
+            linked_id
+        )
+
     return {
 
         "parent_chunks": parent_chunks,
 
         "child_chunks": child_chunks,
 
+        "linked_chunks": linked_chunks,
+
         "parent_citations": parent_citations,
 
-        "child_citations": child_citations
+        "child_citations": child_citations,
+
+        "linked_citations": linked_citations
 
     }
 
@@ -83,8 +125,8 @@ def build_graph_context(
 if __name__ == "__main__":
 
     result = build_graph_context(
-        "SCRUM-7",
-        "jira"
+        "Credit Card Transaction Dispute",
+        "confluence"
     )
 
     print("\nPARENT CHUNKS")
@@ -97,4 +139,10 @@ if __name__ == "__main__":
     print("=" * 50)
 
     for chunk in result["child_chunks"]:
+        print(chunk)
+
+    print("\nLINKED CHUNKS")
+    print("=" * 50)
+
+    for chunk in result["linked_citations"]:
         print(chunk)

@@ -1,44 +1,42 @@
 from rag.embedding import embed_query
+from rag.metadata_filters import build_metadata_where
 import chromadb
 
-def  retrieve_document(query:str, source:str):
+
+def retrieve_document(
+    query: str,
+    source: str | None = None,
+    metadata_filters: dict | None = None,
+    top_k: int = 3
+):
     client = chromadb.PersistentClient(path="./chroma_db")
 
     collection = client.get_or_create_collection(name="knowledge_fabric")
 
     query_embedding = embed_query(query)
-
-
-    if source == "jira":
-
-        where = {
-        "source_type": "jira"
-        }
-
-    elif source == "confluence":
-
-        where = {
-            "source_type": "confluence"
-        }
-
-    else:
-
-        where = {
-            "source": source
-        }
-
-    retrieved = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=3,
-        where=where,
-        include=["documents", "metadatas"]
+    where = build_metadata_where(
+        source,
+        metadata_filters
     )
 
-    print(
-        retrieved["metadatas"][0][0]
-    )
+    query_kwargs = {
+        "query_embeddings": [query_embedding],
+        "n_results": top_k,
+        "include": ["documents", "metadatas"]
+    }
+
+    if where:
+        query_kwargs["where"] = where
+
+    retrieved = collection.query(**query_kwargs)
+
+    if retrieved["metadatas"][0]:
+        print(
+            retrieved["metadatas"][0][0]
+        )
 
     print("Vector Source:", source)
+    print("Vector Filters:", where)
     print("Retrieved Chunks:", len(retrieved["documents"][0]))
 
     return {

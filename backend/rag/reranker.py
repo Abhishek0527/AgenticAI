@@ -1,8 +1,9 @@
+import os
 from sentence_transformers import CrossEncoder
 
-model = CrossEncoder(
-    "cross-encoder/ms-marco-MiniLM-L-6-v2"
-)
+# Load from local directory (no HF Hub download needed)
+_model_dir = os.path.join(os.path.dirname(__file__), "..", "models", "ms-marco-MiniLM-L-6-v2")
+model = CrossEncoder(_model_dir)
 
 
 def rerank_documents(

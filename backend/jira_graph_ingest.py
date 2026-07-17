@@ -1,6 +1,6 @@
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
-from connectors.jira_loader import load_jira
+from connectors.jira_loader import load_jira, issue_to_text
 import os
 
 load_dotenv()
@@ -17,18 +17,25 @@ issues = load_jira()
 
 with driver.session() as session:
 
+    base_url = os.getenv("ATLASSIAN_BASE_URL", "https://agenticevo.atlassian.net/").rstrip("/")
+
     # First pass: Create all Jira nodes
     for issue in issues:
         key = issue["key"]
         summary = issue["fields"]["summary"]
+        
+        print(f"Creating Node: {key} - {summary}")
         status = issue["fields"]["status"]["name"]
         issue_type = issue["fields"]["issuetype"]["name"]
+        url = f"{base_url}/browse/{key}"
 
         create_node_query = """
         MERGE (j:Jira {key: $key})
         SET j.summary = $summary,
             j.status = $status,
-            j.type = $type
+            j.type = $type,
+            j.url = $url,
+            j.display = $display
         """
 
         session.run(
@@ -36,7 +43,9 @@ with driver.session() as session:
             key=key,
             summary=summary,
             status=status,
-            type=issue_type
+            type=issue_type,
+            url=url,
+            display=f"{key}: {summary}"
         )
 
     # Create project node and link top-level tickets
@@ -48,9 +57,13 @@ with driver.session() as session:
     session.run(
         """
         MERGE (p:Jira {key: $project_key})
-        SET p.type = "Project"
+        SET p.type = "Project",
+            p.url = $url,
+            p.display = $display
         """,
-        project_key=project_key
+        project_key=project_key,
+        url=f"{base_url}/browse/{project_key}",
+        display=f"Project: {project_key}"
     )
 
     for issue in issues:

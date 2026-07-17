@@ -29,13 +29,24 @@ with driver.session() as session:
             page["title"]
         )
 
+        text = page.get("text", "")
+        page_id = page.get("page_id", "")
+        confluence_base_url = os.getenv("CONFLUENCE_URL", "https://agenticevo.atlassian.net/").rstrip("/")
+        url = f"{confluence_base_url}/wiki/pages/viewpage.action?pageId={page_id}"
+
         session.run(
             """
             MERGE (n:Confluence {
-                title: $title
+                key: $key
             })
+            SET n.title = $title,
+                n.content = $content,
+                n.url = $url
             """,
-            title=page["title"]
+            key=page_id,
+            title=page["title"],
+            content=text,
+            url=url
         )
 
 

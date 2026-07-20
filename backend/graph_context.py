@@ -10,7 +10,8 @@ def get_graph_context(source_id, source_type):
     context = {
         "parent_ids": [],
         "child_ids": [],
-        "linked_ids": []
+        "linked_ids": [],
+        "semantic_linked_ids": []
     }
 
     driver = None
@@ -71,7 +72,7 @@ def get_graph_context(source_id, source_type):
                         row["key"]
                     )
 
-                # Linked Confluence pages
+                # Linked Confluence pages (explicit: Jira references doc)
 
                 linked_result = session.run(
                     """
@@ -89,6 +90,34 @@ def get_graph_context(source_id, source_type):
                     context["linked_ids"].append(
                         row["title"]
                     )
+
+                # Semantically related Confluence pages
+                # (Confluence)-[:RELATES_TO {semantic_score}]->(Jira)
+                # so we traverse the edge in reverse from Jira's perspective
+
+                semantic_result = session.run(
+                    """
+                    MATCH (c:Confluence)-[r:RELATES_TO]->(j:Jira {
+                        key: $source_id
+                    })
+
+                    RETURN c.key AS key, c.title AS title,
+                           r.semantic_score AS score
+
+                    ORDER BY r.semantic_score DESC
+                    LIMIT 5
+                    """,
+                    source_id=source_id
+                )
+
+                for row in semantic_result:
+
+                    page_id = row["key"] or row["title"]
+
+                    if page_id:
+                        context["semantic_linked_ids"].append(
+                            page_id
+                        )
 
             # ====================
             # Confluence Graph
@@ -176,6 +205,31 @@ def get_graph_context(source_id, source_type):
                     context["linked_ids"].append(
                         row["key"]
                     )
+
+                # Semantically related Jira tickets
+                # (Confluence)-[:RELATES_TO {semantic_score}]->(Jira)
+                # forward direction from Confluence's perspective.
+                # Match by page_id (key) first, fall back to title.
+
+                semantic_result = session.run(
+                    """
+                    MATCH (c:Confluence)-[r:RELATES_TO]->(j:Jira)
+                    WHERE c.key = $source_id OR c.title = $source_id
+
+                    RETURN j.key AS key, r.semantic_score AS score
+
+                    ORDER BY r.semantic_score DESC
+                    LIMIT 5
+                    """,
+                    source_id=source_id
+                )
+
+                for row in semantic_result:
+
+                    if row["key"]:
+                        context["semantic_linked_ids"].append(
+                            row["key"]
+                        )
 
     except Exception as e:
 

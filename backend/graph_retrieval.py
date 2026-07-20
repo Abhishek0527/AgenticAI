@@ -15,14 +15,17 @@ def build_graph_context(
     parent_chunks = []
     child_chunks = []
     linked_chunks = []
+    semantic_linked_chunks = []
 
     parent_citations = []
     child_citations = []
     linked_citations = []
+    semantic_linked_citations = []
 
     seen_parents = set()
     seen_children = set()
     seen_linked = set()
+    seen_semantic = set()
 
     # ====================
     # Parent Retrieval
@@ -105,6 +108,35 @@ def build_graph_context(
             linked_id
         )
 
+    # ====================
+    # Semantic Linked Retrieval
+    # (Cross-system: RELATES_TO edges from semantic similarity)
+    # ====================
+
+    for semantic_id in graph_context.get(
+        "semantic_linked_ids", []
+    ):
+
+        if semantic_id in seen_semantic:
+            continue
+
+        seen_semantic.add(semantic_id)
+
+        result = retrieve_by_source(
+            semantic_id
+        )
+
+        if not result["documents"]:
+            continue
+
+        semantic_linked_chunks.extend(
+            result["documents"]
+        )
+
+        semantic_linked_citations.append(
+            semantic_id
+        )
+
     return {
 
         "parent_chunks": parent_chunks,
@@ -113,11 +145,15 @@ def build_graph_context(
 
         "linked_chunks": linked_chunks,
 
+        "semantic_linked_chunks": semantic_linked_chunks,
+
         "parent_citations": parent_citations,
 
         "child_citations": child_citations,
 
-        "linked_citations": linked_citations
+        "linked_citations": linked_citations,
+
+        "semantic_linked_citations": semantic_linked_citations
 
     }
 

@@ -12,12 +12,14 @@ def build_context(
     primary_chunks,
     parent_chunks=None,
     child_chunks=None,
-    linked_chunks=None
+    linked_chunks=None,
+    semantic_linked_chunks=None
 ):
 
     parent_chunks = parent_chunks or []
     child_chunks = child_chunks or []
     linked_chunks = linked_chunks or []
+    semantic_linked_chunks = semantic_linked_chunks or []
 
     sections = []
 
@@ -98,6 +100,13 @@ def build_context(
             "\nRELATED LINKED CONTEXT\n"
             "======================\n",
             linked_chunks
+        )
+
+    if semantic_linked_chunks:
+        add_section(
+            "\nSEMANTICALLY RELATED CONTEXT\n"
+            "============================\n",
+            semantic_linked_chunks
         )
 
     return "\n".join(sections)

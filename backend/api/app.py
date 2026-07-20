@@ -87,10 +87,12 @@ def chat(req: ChatRequest):
         parent_chunks = []
         child_chunks = []
         linked_chunks = []
+        semantic_linked_chunks = []
         primary_citations = []
         parent_citations = []
         child_citations = []
         linked_citations = []
+        semantic_linked_citations = []
         seen_sources = set()
 
         for result in reranked[:5]:
@@ -129,6 +131,9 @@ def chat(req: ChatRequest):
             linked_chunks.extend(
                 graph_result["linked_chunks"]
             )
+            semantic_linked_chunks.extend(
+                graph_result["semantic_linked_chunks"]
+            )
             parent_citations.extend(
                 graph_result["parent_citations"]
             )
@@ -137,6 +142,9 @@ def chat(req: ChatRequest):
             )
             linked_citations.extend(
                 graph_result["linked_citations"]
+            )
+            semantic_linked_citations.extend(
+                graph_result["semantic_linked_citations"]
             )
 
         metadata = primary_citations[0]
@@ -190,6 +198,11 @@ def chat(req: ChatRequest):
         linked_chunks = graph_result[
             "linked_chunks"
         ]
+
+        semantic_linked_chunks = graph_result[
+            "semantic_linked_chunks"
+        ]
+
         primary_citations = [metadata]
         parent_citations = graph_result[
             "parent_citations"
@@ -200,12 +213,16 @@ def chat(req: ChatRequest):
         linked_citations = graph_result[
             "linked_citations"
         ]
+        semantic_linked_citations = graph_result[
+            "semantic_linked_citations"
+        ]
 
     final_context = build_context(
         primary_chunks,
         parent_chunks,
         child_chunks,
-        linked_chunks
+        linked_chunks,
+        semantic_linked_chunks
     )
 
     print("\n===== FINAL CONTEXT =====")
@@ -232,6 +249,9 @@ def chat(req: ChatRequest):
             ),
             "linked": _dedupe_list(
                 linked_citations
+            ),
+            "semantic_linked": _dedupe_list(
+                semantic_linked_citations
             )
         }
     }

@@ -127,6 +127,7 @@ function App() {
                   {citations.parents?.length > 0 && <CitationGroup label="Related context" items={citations.parents} />}
                   {citations.children?.length > 0 && <CitationGroup label="Supporting context" items={citations.children} />}
                   {citations.linked?.length > 0 && <CitationGroup label="Linked context" items={citations.linked} />}
+                  {citations.semantic_linked?.length > 0 && <CitationGroup label="Semantic links" items={citations.semantic_linked} semantic />}
                 </section>
               )}
             </article>
@@ -138,8 +139,27 @@ function App() {
   );
 }
 
-function CitationGroup({ label, items, getText = (item) => item }) {
-  return <div className="citation-group"><strong>{label}</strong><div className="citation-list">{items.map((item, index) => <div key={index} className="citation-card">{getText(item)}</div>)}</div></div>;
+function CitationGroup({ label, items, getText = (item) => item.title ?? item.source ?? item, semantic = false }) {
+  return (
+    <div className="citation-group">
+      <strong>
+        {semantic && <span className="semantic-badge" aria-label="AI-matched">⚡ Semantic</span>}
+        {label}
+      </strong>
+      <div className="citation-list">
+        {items.map((item, index) => (
+          <div key={index} className={`citation-card${semantic ? " citation-card--semantic" : ""}`}>
+            <span className="citation-title">{getText(item)}</span>
+            {semantic && item.semantic_score != null && (
+              <span className="semantic-score" title="Cosine similarity score">
+                {Math.round(item.semantic_score * 100)}% match
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default App;
